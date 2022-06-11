@@ -1,16 +1,15 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 
 namespace CurrencyConverter.Core;
 
-public class CurrencyConverter : ICurrencyConverter
+public partial class CurrencyConverter : ICurrencyConverter
 {
     private ConcurrentDictionary<CurrencyTuple, double> _currencyConversionRateMap = null;
 
     public void ClearConfiguration()
     {
-        _currencyConversionRateMap?.Clear();
+        _currencyConversionRateMap = null;
     }
 
     public ReadOnlyDictionary<(string, string), double> GetConversionRateMap()
@@ -73,16 +72,15 @@ public class CurrencyConverter : ICurrencyConverter
             select new CurrencyTuple(l, r);
 
         var nonExistingPermutations = allPermutations
-            //.Where(k => k.From != k.To)
             .Except(rates.Keys)
-            .ToHashSet();
+            .ToArray();
 
-        var paths = new Dictionary<CurrencyTuple, List<LinkedList<CurrencyTuple>>>();
+        var paths = new Dictionary<CurrencyTuple, List<ConversionPath>>();
         foreach (var path in rates)
         {
-            paths.Add(path.Key, new List<LinkedList<CurrencyTuple>>
+            paths.Add(path.Key, new List<ConversionPath>
             {
-                new LinkedList<CurrencyTuple>(new[] { path.Key })
+                new ConversionPath(new [] { path.Key })
             });
         }
 
@@ -91,7 +89,7 @@ public class CurrencyConverter : ICurrencyConverter
             var anyFound = false;
             foreach (var conversion in nonExistingPermutations)
             {
-                var path = new LinkedList<CurrencyTuple>();
+                var path = new ConversionPath();
                 var result = AddNewPaths(rates, paths, path, conversion);
 
                 foreach (var p in result)
@@ -113,11 +111,7 @@ public class CurrencyConverter : ICurrencyConverter
         {
             foreach (var path in paths)
             {
-                var shortestPath = path.Value
-                    .OrderBy(x => x.Count)
-                    .FirstOrDefault();
-
-                if (shortestPath is null)
+                if (path.Value.Count == 0)
                 {
                     paths.Remove(path.Key);
                     continue;
@@ -128,6 +122,10 @@ public class CurrencyConverter : ICurrencyConverter
                     paths.Remove(path.Key);
                     continue;
                 }
+
+                var shortestPath = path.Value
+                    .OrderBy(x => x.Count)
+                    .FirstOrDefault();
 
                 var rate = 1D;
                 var skipPath = false;
@@ -153,17 +151,17 @@ public class CurrencyConverter : ICurrencyConverter
         return rates;
     }
 
-    private List<LinkedList<CurrencyTuple>> AddNewPaths(
+    private List<ConversionPath> AddNewPaths(
         Dictionary<CurrencyTuple, double> rates,
-        Dictionary<CurrencyTuple, List<LinkedList<CurrencyTuple>>> paths,
-        LinkedList<CurrencyTuple> currentPath,
+        Dictionary<CurrencyTuple, List<ConversionPath>> paths,
+        ConversionPath currentPath,
         CurrencyTuple node
     )
     {
-        var result = new List<LinkedList<CurrencyTuple>>();
+        var result = new List<ConversionPath>();
         if (rates.ContainsKey(node))
         {
-            var path = new LinkedList<CurrencyTuple>(new[] { node });
+            var path = new ConversionPath(new[] { node });
             result.Add(path);
             return result;
         }
@@ -181,21 +179,15 @@ public class CurrencyConverter : ICurrencyConverter
                 continue;
             }
 
-            var newPath = new LinkedList<CurrencyTuple>(currentPath);
-            newPath.AddLast(p);
+            var newPath = currentPath + p;
 
             var childPaths = AddNewPaths(rates, paths, newPath, p);
 
             foreach (var path in childPaths)
             {
-                if (path.First.Value.From == p.From && path.Last.Value.To == p.To)
+                if (path[0].From == p.From && path[^1].To == p.To)
                 {
-                    var newChildPath = new LinkedList<CurrencyTuple>();
-                    newChildPath.AddLast(new LinkedListNode<CurrencyTuple>(new CurrencyTuple(node.From, link.Key.To)));
-                    foreach (var childPathNode in path)
-                    {
-                        newChildPath.AddLast(childPathNode);
-                    }
+                    var newChildPath = new ConversionPath(path.Prepend(new CurrencyTuple(node.From, link.Key.To)));
                     result.Add(newChildPath);
                 }
             }
@@ -205,16 +197,16 @@ public class CurrencyConverter : ICurrencyConverter
     }
 
     private bool SetPath(
-        Dictionary<CurrencyTuple, List<LinkedList<CurrencyTuple>>> paths,
+        Dictionary<CurrencyTuple, List<ConversionPath>> paths,
         CurrencyTuple node,
-        LinkedList<CurrencyTuple> path
+        ConversionPath path
     )
     {
         if (paths.TryGetValue(node, out var existingPathList))
         {
             foreach (var p in existingPathList)
             {
-                if (p.SequenceEqual(path))
+                if (p == path)
                 {
                     return false;
                 }
@@ -224,95 +216,9 @@ public class CurrencyConverter : ICurrencyConverter
         }
         else
         {
-            paths[node] = new List<LinkedList<CurrencyTuple>> { path };
+            paths[node] = new List<ConversionPath> { path };
         }
 
         return true;
-    }
-
-    // private bool PathExists(
-    //     Dictionary<CurrencyTuple, LinkedList<CurrencyTuple>> paths,
-    //     CurrencyTuple node,
-    //     LinkedList<CurrencyTuple> path
-    // )
-    // {
-    //     if (paths.TryGetValue(node, out var existingPaths))
-    //     {
-    //         foreach (var currentPath in existingPaths)
-    //         {
-    //             if (currentPath.SequenceEqual(path))
-    //             {
-    //                 return true;
-    //             }
-    //         }
-    //     }
-
-    //     return false;
-    // }
-
-
-    // We could have used ValueTuple instead of CurrencyMap, but we can add validations and keep currencies in UpperCase form.
-    [DebuggerDisplay("{From}=>{To}")]
-    private struct CurrencyTuple : IEquatable<CurrencyTuple>
-    {
-        public string From { get; }
-        public string To { get; }
-
-        public CurrencyTuple(
-            string from,
-            string to
-        )
-        {
-            ArgumentNullException.ThrowIfNull(from, nameof(from));
-            ArgumentNullException.ThrowIfNull(to, nameof(to));
-
-            if (from.Length != 3 || to.Length != 3)
-            {
-                throw new Exception(
-                    $"Currency codes must be 3 characters long. {from} and {to} are not valid."
-                );
-            }
-
-            From = from.ToUpper();
-            To = to.ToUpper();
-        }
-
-        public bool Equals(
-            CurrencyTuple other
-        )
-        {
-            return From == other.From && To == other.To;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(
-                From.GetHashCode(),
-                To.GetHashCode()
-            );
-        }
-
-        public override bool Equals(
-            object obj
-        )
-        {
-            return obj is CurrencyTuple other && Equals(other);
-        }
-
-        public static bool operator ==(
-            CurrencyTuple left,
-            CurrencyTuple right
-        )
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(
-            CurrencyTuple left,
-            CurrencyTuple right
-        )
-        {
-            return !left.Equals(right);
-        }
     }
 }
