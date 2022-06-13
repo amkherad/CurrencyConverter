@@ -9,13 +9,12 @@ public class CurrencyConverterTests
 {
     private readonly global::CurrencyConverter.Core.CurrencyConverter _currencyConverter;
 
-    private readonly IEnumerable<Tuple<string, string, double>> _conversionRates = new[]
+    private readonly IEnumerable<Tuple<string, string, decimal>> _conversionRates = new[]
     {
-        //Tuple.Create("USD", "EUR", 0.86),
-        Tuple.Create("CAD", "GBP", 0.58),
-        Tuple.Create("EUR", "IRR", 30000D),
-        Tuple.Create("GBP", "EUR", 1.18),
-        Tuple.Create("USD", "CAD", 1.34),
+        Tuple.Create("CAD", "GBP", 0.58M),
+        Tuple.Create("EUR", "JPY", 141.39M),
+        Tuple.Create("GBP", "EUR", 1.18M),
+        Tuple.Create("USD", "CAD", 1.34M),
     };
 
     public CurrencyConverterTests()
@@ -36,17 +35,15 @@ public class CurrencyConverterTests
     }
 
     [Theory]
-    [InlineData("CAD", "USD", 0, 0)]
-    [InlineData("EUR", "USD", 0, 0)]
-    [InlineData("EUR", "CAD", 0, 0)]
+    [InlineData("CAD", "USD")]
+    [InlineData("EUR", "USD")]
+    [InlineData("EUR", "CAD")]
     public void GivenImpossibleData_WhenCallingConvert_ThenItShouldThrow(
         string from,
-        string to,
-        double value,
-        double? expectedResult
+        string to
     )
     {
-        Action action = () => _currencyConverter.Convert(from, to, value);
+        Action action = () => _currencyConverter.Convert(from, to, 1000);
 
         action
             .Should()
@@ -65,7 +62,7 @@ public class CurrencyConverterTests
         double? expectedResult
     )
     {
-        var result = _currencyConverter.Convert(from, to, value);
+        var result = _currencyConverter.Convert(from, to, (decimal) value);
 
         // Doubles are not precise enough to compare with a delta.
         ((double?)result)

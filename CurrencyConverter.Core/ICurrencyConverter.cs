@@ -5,12 +5,12 @@ public interface ICurrencyConverter
     void ClearConfiguration();
 
     void UpdateConfiguration(
-        IEnumerable<Tuple<string, string, double>> conversionRates
+        IEnumerable<Tuple<string, string, decimal>> conversionRates
     );
 
-    double Convert(
+    decimal Convert(
         string fromCurrency,
         string toCurrency,
-        double amount
+        decimal amount
     );
 }

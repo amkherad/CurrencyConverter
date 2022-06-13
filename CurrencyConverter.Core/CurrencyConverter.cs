@@ -5,23 +5,23 @@ namespace CurrencyConverter.Core;
 
 public partial class CurrencyConverter : ICurrencyConverter
 {
-    private ConcurrentDictionary<CurrencyTuple, double> _currencyConversionRateMap = null;
+    private ConcurrentDictionary<CurrencyTuple, decimal> _currencyConversionRateMap = null;
 
     public void ClearConfiguration()
     {
         _currencyConversionRateMap = null;
     }
 
-    public ReadOnlyDictionary<(string, string), double> GetConversionRateMap()
+    public ReadOnlyDictionary<(string, string), decimal> GetConversionRateMap()
     {
-        return new ReadOnlyDictionary<(string, string), double>(
+        return new ReadOnlyDictionary<(string, string), decimal>(
             _currencyConversionRateMap?.ToDictionary(k => (k.Key.From, k.Key.To), v => v.Value)
-                ?? new Dictionary<(string, string), double>()
+                ?? new Dictionary<(string, string), decimal>()
         );
     }
 
     public void UpdateConfiguration(
-        IEnumerable<Tuple<string, string, double>> conversionRates
+        IEnumerable<Tuple<string, string, decimal>> conversionRates
     )
     {
         ArgumentNullException.ThrowIfNull(conversionRates, nameof(conversionRates));
@@ -29,13 +29,13 @@ public partial class CurrencyConverter : ICurrencyConverter
         var rates = conversionRates.Select(cr => (new CurrencyTuple(cr.Item1, cr.Item2), cr.Item3)).ToArray();
 
         // Atomic swap of the currency conversion rate map without mutating the old map.
-        _currencyConversionRateMap = new ConcurrentDictionary<CurrencyTuple, double>(CreateConversionRateMap(rates));
+        _currencyConversionRateMap = new ConcurrentDictionary<CurrencyTuple, decimal>(CreateConversionRateMap(rates));
     }
 
-    public double Convert(
+    public decimal Convert(
         string fromCurrency,
         string toCurrency,
-        double amount
+        decimal amount
     )
     {
         var map = new CurrencyTuple(fromCurrency, toCurrency);
@@ -52,8 +52,8 @@ public partial class CurrencyConverter : ICurrencyConverter
         return amount * rate;
     }
 
-    private Dictionary<CurrencyTuple, double> CreateConversionRateMap(
-        (CurrencyTuple ConversionKey, double Rate)[] rateMap
+    private Dictionary<CurrencyTuple, decimal> CreateConversionRateMap(
+        (CurrencyTuple ConversionKey, decimal Rate)[] rateMap
     )
     {
         var rates = rateMap
@@ -127,7 +127,7 @@ public partial class CurrencyConverter : ICurrencyConverter
                     .OrderBy(x => x.Count)
                     .FirstOrDefault();
 
-                var rate = 1D;
+                var rate = 1M;
                 var skipPath = false;
 
                 foreach (var pathNode in shortestPath.Reverse())
@@ -152,7 +152,7 @@ public partial class CurrencyConverter : ICurrencyConverter
     }
 
     private List<ConversionPath> AddNewPaths(
-        Dictionary<CurrencyTuple, double> rates,
+        Dictionary<CurrencyTuple, decimal> rates,
         Dictionary<CurrencyTuple, List<ConversionPath>> paths,
         ConversionPath currentPath,
         CurrencyTuple node
@@ -220,5 +220,21 @@ public partial class CurrencyConverter : ICurrencyConverter
         }
 
         return true;
+    }
+
+    private class WeightedPath
+    {
+        public ConversionPath Path { get; }
+
+        public int Weight { get; }
+
+        public WeightedPath(
+            ConversionPath path,
+            int weight
+        )
+        {
+            Path = path;
+            Weight = weight;
+        }
     }
 }
