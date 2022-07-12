@@ -1,13 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\CurrencyConverter.Abstractions\CurrencyConverter.Abstractions.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>CurrencyConverter.Core</AssemblyName>
+    <RootNamespace>CurrencyConverter.Core</RootNamespace>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CurrencyConverter.Abstractions\CurrencyConverter.Abstractions.csproj" />
+  </ItemGroup>
 
 </Project>
