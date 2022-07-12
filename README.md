@@ -1,7 +1,7 @@
 # CurrencyConverter
-A CurrencyConverter service which finds all possible conversions from an incomplete set of conversion mappings.
+A CurrencyConverter service which finds all possible conversions from an incomplete set of conversion-mappings.
 
-For example give the following data:
+For example, given the following data:
 From | To  | Rate
 -----|-----|-----
  CAD | GBP | 0.58
