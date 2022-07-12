@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using CurrencyConverter.Abstractions;
 
 namespace CurrencyConverter.Core;
 
@@ -226,7 +227,7 @@ public partial class CurrencyConverter : ICurrencyConverter
     {
         public ConversionPath Path { get; }
 
-        public int Weight { get; }
+        public int Weight { get; private set; }
 
         public WeightedPath(
             ConversionPath path,
@@ -235,6 +236,16 @@ public partial class CurrencyConverter : ICurrencyConverter
         {
             Path = path;
             Weight = weight;
+        }
+
+        public override string ToString()
+        {
+            return $"{Path} ({Weight})";
+        }
+
+        public void AddWeight(int weight)
+        {
+            Weight += weight;
         }
     }
 }

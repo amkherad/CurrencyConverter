@@ -1,4 +1,4 @@
-﻿namespace CurrencyConverter.Core;
+﻿namespace CurrencyConverter.Abstractions;
 
 public interface ICurrencyConverter
 {
